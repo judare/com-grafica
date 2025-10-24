@@ -4,90 +4,8 @@ from PIL import Image, ImageTk
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import procesamiento as prot
 
-# --- Módulo de Procesamiento de Imágenes ---
-# Se integran las funciones proporcionadas y se añaden las necesarias.
-
-def procesamiento(Imagen1, Imagen2, factor):
-    """Funde dos imágenes con un factor de transparencia."""
-    # Asegurarse de que las imágenes tengan el mismo tamaño
-    h1, w1, _ = Imagen1.shape
-    h2, w2, _ = Imagen2.shape
-    if h1 != h2 or w1 != w2:
-        img2_pil = Image.fromarray((Imagen2 * 255).astype(np.uint8))
-        img2_resized = img2_pil.resize((w1, h1))
-        Imagen2 = np.array(img2_resized) / 255.0
-        
-    return (Imagen1 * factor) + (Imagen2 * (1 - factor))
-
-def capaRoja(imagen):
-    """Extrae el canal rojo de la imagen."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 1] = 0
-    imgC[:, :, 2] = 0
-    return imgC
-
-def capaVerde(imagen):
-    """Extrae el canal verde de la imagen."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 0] = 0
-    imgC[:, :, 2] = 0
-    return imgC
-
-def capaAzul(imagen):
-    """Extrae el canal azul de la imagen."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 0] = 0
-    imgC[:, :, 1] = 0
-    return imgC
-
-def capaCyan(imagen):
-    """Calcula y aplica el canal Cyan (complemento del Rojo)."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 0] = 0  # R = 0
-    return imgC
-
-def capaMagenta(imagen):
-    """Calcula y aplica el canal Magenta (complemento del Verde)."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 1] = 0  # G = 0
-    return imgC
-
-def capaAmarillo(imagen):
-    """Calcula y aplica el canal Amarillo (complemento del Azul)."""
-    imgC = np.copy(imagen)
-    imgC[:, :, 2] = 0  # B = 0
-    return imgC
-
-def invertida(imagen):
-    """Calcula el negativo de la imagen."""
-    return 1.0 - imagen
-
-def ajustarBrillo(imagen, factor):
-    """Ajusta el brillo de la imagen."""
-    imgC = np.clip(imagen + factor, 0.0, 1.0)
-    return imgC
-
-def aumentarContraste(imagen, factor):
-    """Ajusta el contraste de la imagen."""
-    imgC = np.clip(128 + factor * (imagen * 255 - 128), 0, 255) / 255.0
-    return imgC
-
-def binarizar(imagen, factor):
-    """Convierte la imagen a blanco y negro usando un umbral."""
-    imgC = np.copy(imagen)
-    gris = (imgC[:, :, 0] * 0.299 + imgC[:, :, 1] * 0.587 + imgC[:, :, 2] * 0.114)
-    binaria = (gris > factor).astype(float)
-    return np.stack([binaria] * 3, axis=-1)
-    
-def rotar_imagen(imagen, angulo):
-    """Rota la imagen un ángulo determinado."""
-    from PIL import Image
-    img_pil = Image.fromarray((imagen * 255).astype(np.uint8))
-    img_rotada = img_pil.rotate(angulo, expand=True, fillcolor='black')
-    return np.array(img_rotada) / 255.0
-
-# --- Clase Principal de la Aplicación ---
 
 class ImageViewer(tk.Tk):
     def __init__(self):
@@ -110,8 +28,6 @@ class ImageViewer(tk.Tk):
             "activeforeground": self.color_texto
         }
 
-
-        # Variables de estado
         self.imagen_original = None
         self.imagen_modificada = None
         self.imagen_para_fusion = None
@@ -149,9 +65,7 @@ class ImageViewer(tk.Tk):
 
         canvas_controles.pack(side="left", fill="y", expand=True)
         scrollbar.pack(side="right", fill="y")
-        
-        # --- Controles (dentro del frame deslizable) ---
-        
+                
         frame_archivos = tk.LabelFrame(scrollable_frame, text="Archivo", fg=self.color_texto, bg=self.color_fondo_frame, font=self.fuente_titulo)
         frame_archivos.pack(fill=tk.X, pady=10)
         btn_cargar = tk.Button(frame_archivos, text="Cargar Imagen", command=self.cargar_imagen, **self.estilo_boton)
@@ -232,20 +146,20 @@ class ImageViewer(tk.Tk):
     def aplicar_cambios(self):
         if self.imagen_original is None: return
         self.imagen_modificada = np.copy(self.imagen_original)
-        if self.rotacion_slider.get() != 0: self.imagen_modificada = rotar_imagen(self.imagen_modificada, self.rotacion_slider.get())
-        self.imagen_modificada = ajustarBrillo(self.imagen_modificada, self.brillo_slider.get())
-        self.imagen_modificada = aumentarContraste(self.imagen_modificada, self.contraste_slider.get())
+        if self.rotacion_slider.get() != 0: self.imagen_modificada = prot.rotar_imagen(self.imagen_modificada, self.rotacion_slider.get())
+        self.imagen_modificada = prot.ajustarBrillo(self.imagen_modificada, self.brillo_slider.get())
+        self.imagen_modificada = prot.aumentarContraste(self.imagen_modificada, self.contraste_slider.get())
         temp_img = np.zeros_like(self.imagen_modificada)
         if any([self.var_r.get(), self.var_g.get(), self.var_b.get(), self.var_c.get(), self.var_m.get(), self.var_y.get()]):
-            if self.var_r.get(): temp_img += capaRoja(self.imagen_modificada)
-            if self.var_g.get(): temp_img += capaVerde(self.imagen_modificada)
-            if self.var_b.get(): temp_img += capaAzul(self.imagen_modificada)
-            if self.var_c.get(): temp_img += capaCyan(self.imagen_modificada)
-            if self.var_m.get(): temp_img += capaMagenta(self.imagen_modificada)
-            if self.var_y.get(): temp_img += capaAmarillo(self.imagen_modificada)
+            if self.var_r.get(): temp_img += prot.capaRoja(self.imagen_modificada)
+            if self.var_g.get(): temp_img += prot.capaVerde(self.imagen_modificada)
+            if self.var_b.get(): temp_img += prot.capaAzul(self.imagen_modificada)
+            if self.var_c.get(): temp_img += prot.capaCyan(self.imagen_modificada)
+            if self.var_m.get(): temp_img += prot.capaMagenta(self.imagen_modificada)
+            if self.var_y.get(): temp_img += prot.capaAmarillo(self.imagen_modificada)
             self.imagen_modificada = np.clip(temp_img, 0, 1)
-        if self.var_binarizar.get(): self.imagen_modificada = binarizar(self.imagen_modificada, self.binarizar_slider.get())
-        if self.imagen_para_fusion is not None and self.fusion_slider.get() > 0: self.imagen_modificada = procesamiento(self.imagen_modificada, self.imagen_para_fusion, 1 - self.fusion_slider.get())
+        if self.var_binarizar.get(): self.imagen_modificada = prot.binarizar(self.imagen_modificada, self.binarizar_slider.get())
+        if self.imagen_para_fusion is not None and self.fusion_slider.get() > 0: self.imagen_modificada = prot.procesamiento(self.imagen_modificada, self.imagen_para_fusion, 1 - self.fusion_slider.get())
         self.mostrar_imagen(self.imagen_modificada)
 
     def restaurar_imagen(self):
@@ -296,10 +210,9 @@ class ImageViewer(tk.Tk):
 
     def aplicar_negativo(self):
         if self.imagen_modificada is not None:
-            self.imagen_modificada = invertida(self.imagen_modificada)
+            self.imagen_modificada = prot.invertida(self.imagen_modificada)
             self.mostrar_imagen(self.imagen_modificada)
 
-    # --- Funciones de Zoom (CORREGIDAS) ---
     def on_mouse_press(self, event):
         self.zoom_coords = [event.x, event.y, event.x, event.y]
 
@@ -309,18 +222,15 @@ class ImageViewer(tk.Tk):
             self.canvas.delete("zoom_rect")
             self.canvas.create_rectangle(self.zoom_coords, outline="red", width=2, tags="zoom_rect")
 
-    def on_mouse_release(self, event):
+    def on_mouse_release(self):
         if self.zoom_coords:
             self.canvas.delete("zoom_rect")
-            # Solo aplica zoom si el área es significativa (más de 5x5 píxeles)
             if abs(self.zoom_coords[0] - self.zoom_coords[2]) > 5 and abs(self.zoom_coords[1] - self.zoom_coords[3]) > 5:
                 self.aplicar_zoom()
             self.zoom_coords = None
 
     def aplicar_zoom(self):
         if self.imagen_modificada is None or self.zoom_coords is None: return
-
-        # CORRECCIÓN: Ordenar correctamente las coordenadas
         x_coords = sorted((self.zoom_coords[0], self.zoom_coords[2]))
         y_coords = sorted((self.zoom_coords[1], self.zoom_coords[3]))
         x1_c, x2_c = x_coords[0], x_coords[1]
