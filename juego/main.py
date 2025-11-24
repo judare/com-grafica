@@ -19,12 +19,46 @@ class Game:
         self.font = pygame.font.SysFont("Arial", 30)
         
         # Cargar Sprites con la nueva logica
-        self.sprite_manager = SpriteManager("juego/sprites_sheet.png")
+        self.sprite_manager = SpriteManager("juego/assets/sprites_sheet.png")
+        # --- CAMBIO AQUÍ: Cargar los fondos para cada nivel ---
+        self.backgrounds = []
+        self.load_backgrounds()
         
         self.state = "MENU"
         self.level = 0
         self.boss_classes = [Riu, Pit, Melkin]
-        
+
+    def load_backgrounds(self):
+        """
+        Carga una imagen de fondo diferente para cada jefe.
+        Si no tienes imagenes para todos, puedes repetir el nombre del archivo.
+        """
+        # Lista de nombres de archivo para Nivel 0 (Riu), Nivel 1 (Pit), Nivel 2 (Melkin)
+        # Puedes cambiar los nombres si generas más imágenes luego.
+        image_files = [
+            "juego/assets/bg1.png",
+            "juego/assets/bg2.png",
+            "juego/assets/bg3.png",
+        ]
+
+        for filename in image_files:
+            try:
+                # Cargar imagen
+                img = pygame.image.load(filename).convert()
+                # Escalar la imagen para que llene la pantalla (800x600)
+                # Esto deforma el cuadrado para que encaje en la ventana rectangular
+                img = pygame.transform.scale(img, (ANCHO_PANTALLA, ALTO_PANTALLA))
+                self.backgrounds.append(img)
+            except pygame.error:
+                print(f"AVISO: No se encontró '{filename}'. Usando fondo gris por defecto.")
+                # Si falla la carga, usamos el generador procedimental antiguo como respaldo
+                self.backgrounds.append(self.generate_default_bg())
+
+    def generate_default_bg(self):
+        # El generador antiguo por si falla la imagen
+        surf = pygame.Surface((ANCHO_PANTALLA, ALTO_PANTALLA))
+        surf.fill((50, 50, 50)) # Gris oscuro simple
+        return surf
     def start_game(self):
         self.player = Player(self.sprite_manager)
         self.projectiles = pygame.sprite.Group()
@@ -136,7 +170,10 @@ class Game:
             
         elif self.state == "PLAYING":
             # Dibujar suelo
-            pygame.draw.rect(self.screen, (40, 40, 50), (50, 50, ANCHO_PANTALLA-100, ALTO_PANTALLA-100))
+            # pygame.draw.rect(self.screen, (40, 40, 50), (50, 50, ANCHO_PANTALLA-100, ALTO_PANTALLA-100))
+            # Aseguramos que el nivel no exceda la cantidad de fondos que tenemos
+            bg_index = self.level if self.level < len(self.backgrounds) else 0
+            self.screen.blit(self.backgrounds[bg_index], (0, 0))
             
             self.all_sprites.draw(self.screen)
             self.projectiles.draw(self.screen)
